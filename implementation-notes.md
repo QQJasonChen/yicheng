@@ -25,10 +25,27 @@
 - ✅ 專案詳情：統計列（投入天數/總刻數/累積時間/學到）與日誌時間軸正確
 - ✅ 手機 375px 兩個主視圖可用
 
-### Phase 2 backlog
+## 2026-06-13 Phase 2（全部完成）
 
-- FocusTimer（從 yike 複製，接 `onSessionDone` 塗圈）
-- Timeline 拖拉時間塊（複製 yike Timeline.tsx；專案 minutes 改 blocks 實際分鐘優先）
-- WeekView：intention + 自動每專案週統計表 + 回顧三問
-- HistoryView：streak 月曆、設定（focusMinutes）
-- 每專案 Markdown 匯出（改寫 yike exportMd.ts）
+### 拍板決策
+1. **時間軸 + FocusTimer**：從 yike fork。差異化 = 時間塊經 `taskIndex → task → projectId` 解析，套**專案色 + emoji**（yike 沒有專案維度）。`projectLog` 的 minutes 改「時間軸實際分鐘優先，無 block 才用塗圈估算」；新增 `blockMinutes`/`sessions` 欄位。FocusTimer 完成自動塗圈 + 寫 block。`pip.ts` 先 stub（浮窗按鈕自動隱藏）。
+2. **登入同步：共用 yike 的 Supabase 專案**（`ofhupqifavtafiylehkj`）+ 獨立 `worklog` 表（與 yike `journal` 表互不干擾、`auth.users` 共用）。純自用 → 公開註冊已關閉故只 `signInWithPassword`（不做 signUp）。QQ 用既有帳號 `qqleveragelearning@gmail.com` 登入。同 origin（github.io）下 yike/yicheng 共用 auth session = 一次登入兩邊都同步（feature 非 bug）。
+3. **本週/設定/MD匯出/趨勢圖**：tabs 擴成 今天|專案|本週|設定。匯出/匯入從專案頁集中到設定頁。
+
+### 建表方式（無 psql）
+`/tmp/pgtool` 裝 `pg` + pooler url（`aws-0-eu-west-1.pooler.supabase.com:6543`，db password 在 `~/.inkday-supabase-db-password`）跑 DDL。service key（`~/.yike-supabase-service-key`）用於查 auth settings / admin 建刪測試帳號。`supabase/setup.sql` 記錄 schema。
+
+### 驗證
+- 同步：建臨時測試帳號 → 登入 push 201 → 清空本機 reload 自動 pull 還原 → 刪測試帳號（cascade 清 worklog）
+- 新聚合函數 `weekProjectStats`/`projectTrend`：Node esbuild bundle + localStorage shim 測試通過
+- UI 截圖：時間軸專案色、FocusTimer、本週統計表、設定頁、趨勢 sparkline（8 點）、跨多週日誌
+
+### 踩雷
+- **zsh 的 `UID` 是唯讀內建變數**：腳本用 `UID=$(...)` 會壞，改 `TID`
+- **gstack browse daemon 被多 session 共用**：`click`/`goto` 作用在全域 active tab，常被別的 session 切走 → 改用 `$B js "el.click()"` 在當前 page context 觸發，繞過 active-tab race
+- 測試 seed 用 `localStorage.setItem` 繞過 `write()` → meta 無時間戳 → 同步不 push（非 bug，實際操作都經 write）
+
+### Phase 3 backlog（想到再做）
+- pip.ts 完整版（FocusTimer 置頂浮窗）
+- 封存專案的「結案回顧」一頁
+- 本週頁的 intention（週意圖）欄位
