@@ -52,7 +52,13 @@ const read = <T>(key: string): T | null => {
   }
 }
 
-const loadMeta = (): Record<string, number> => read<Record<string, number>>(META_KEY) ?? {}
+export const loadMeta = (): Record<string, number> => read<Record<string, number>>(META_KEY) ?? {}
+
+// 寫入通知（雲端同步 debounce push 用）
+let onDataWrite: ((key: string) => void) | null = null
+export const setOnDataWrite = (fn: ((key: string) => void) | null) => {
+  onDataWrite = fn
+}
 
 const write = (key: string, value: unknown) => {
   localStorage.setItem(key, JSON.stringify(value))
@@ -60,7 +66,16 @@ const write = (key: string, value: unknown) => {
     const m = loadMeta()
     m[key] = Date.now()
     localStorage.setItem(META_KEY, JSON.stringify(m))
+    onDataWrite?.(key)
   }
+}
+
+/** 雲端拉下來的資料直接落地（不觸發 push 迴圈），記下伺服器時間戳 */
+export const writeFromCloud = (key: string, value: unknown, serverTs: number) => {
+  localStorage.setItem(key, JSON.stringify(value))
+  const m = loadMeta()
+  m[key] = serverTs
+  localStorage.setItem(META_KEY, JSON.stringify(m))
 }
 
 export const loadDay = (dateKey: string): DayEntry => {
@@ -170,7 +185,7 @@ export const projectStats = (logs: ProjectDayLog[], todayKey: string): ProjectSt
 
 // ---- 匯出 / 匯入 ----
 
-const allDataKeys = (): string[] => {
+export const allDataKeys = (): string[] => {
   const keys: string[] = []
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i)

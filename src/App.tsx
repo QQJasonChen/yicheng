@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import CloudButton from './CloudButton'
 import DayView from './DayView'
 import FocusTimer, { TimerState } from './FocusTimer'
 import ProjectDetail from './ProjectDetail'
@@ -81,6 +82,7 @@ export default function App() {
           </button>
         </nav>
         <span className="streak">
+          <CloudButton />
           {streak > 0 ? (
             <>
               <strong>{streak}</strong> 天連續
