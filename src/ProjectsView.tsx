@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react'
-import { exportAll, importAll, projectLog, projectStats, toDateKey } from './storage'
+import { useMemo, useState } from 'react'
+import { projectLog, projectStats, toDateKey } from './storage'
 import { PROJECT_COLORS, Project, ProjectColor } from './types'
 
 interface Props {
@@ -15,7 +15,6 @@ const fmtHours = (minutes: number): string =>
 export default function ProjectsView({ projects, focusMinutes, onChange, onOpen }: Props) {
   const [adding, setAdding] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
   const todayKey = toDateKey(new Date())
 
   const active = projects.filter((p) => p.status === 'active')
@@ -29,25 +28,6 @@ export default function ProjectsView({ projects, focusMinutes, onChange, onOpen 
       ),
     [projects, focusMinutes, todayKey]
   )
-
-  const exportJson = () => {
-    const blob = new Blob([exportAll()], { type: 'application/json' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = `yicheng-${todayKey}.json`
-    a.click()
-    URL.revokeObjectURL(a.href)
-  }
-
-  const importJson = async (file: File) => {
-    try {
-      const count = importAll(await file.text())
-      alert(`已匯入 ${count} 筆資料，將重新整理`)
-      location.reload()
-    } catch {
-      alert('匯入失敗：檔案格式不正確')
-    }
-  }
 
   const card = (p: Project) => {
     const s = stats.get(p.id)!
@@ -114,19 +94,6 @@ export default function ProjectsView({ projects, focusMinutes, onChange, onOpen 
             {showArchived && <div className="proj-grid">{archived.map(card)}</div>}
           </>
         )}
-
-        <div className="data-bar">
-          <span>資料都在這台裝置上</span>
-          <button onClick={exportJson}>匯出 JSON 備份</button>
-          <button onClick={() => fileRef.current?.click()}>匯入</button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/json"
-            hidden
-            onChange={(e) => e.target.files?.[0] && importJson(e.target.files[0])}
-          />
-        </div>
       </div>
     </div>
   )

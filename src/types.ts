@@ -44,6 +44,14 @@ export interface DayEntry {
   blocks: Block[] // Phase 2 時間軸，欄位先留
 }
 
+export interface WeekEntry {
+  review: { wins: string; learned: string; nextWeek: string }
+}
+
+export const emptyWeek = (): WeekEntry => ({
+  review: { wins: '', learned: '', nextWeek: '' },
+})
+
 export interface Settings {
   focusMinutes: number
   breakMinutes: number

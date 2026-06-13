@@ -4,22 +4,26 @@ import DayView from './DayView'
 import FocusTimer, { TimerState } from './FocusTimer'
 import ProjectDetail from './ProjectDetail'
 import ProjectsView from './ProjectsView'
+import SettingsView from './SettingsView'
+import WeekView from './WeekView'
 import {
   currentStreak,
   loadProjects,
   loadSettings,
+  mondayOf,
   saveProjects,
   saveSettings,
   toDateKey,
 } from './storage'
 import { Project, Settings } from './types'
 
-type Tab = 'day' | 'projects'
+type Tab = 'day' | 'projects' | 'week' | 'settings'
 
 export default function App() {
   const todayKey = toDateKey(new Date())
   const [tab, setTab] = useState<Tab>('day')
   const [dateKey, setDateKey] = useState(todayKey)
+  const [mondayKey, setMondayKey] = useState(() => mondayOf(todayKey))
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [projects, setProjects] = useState<Project[]>(loadProjects)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -80,6 +84,12 @@ export default function App() {
           >
             專案
           </button>
+          <button className={tab === 'week' ? 'active' : ''} onClick={() => setTab('week')}>
+            本週
+          </button>
+          <button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>
+            設定
+          </button>
         </nav>
         <span className="streak">
           <CloudButton />
@@ -129,6 +139,10 @@ export default function App() {
           }}
         />
       )}
+      {tab === 'week' && (
+        <WeekView mondayKey={mondayKey} onWeekChange={setMondayKey} projects={projects} />
+      )}
+      {tab === 'settings' && <SettingsView settings={settings} onChange={updateSettings} />}
 
       {timer && (
         <FocusTimer

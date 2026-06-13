@@ -4,11 +4,14 @@ import {
   Project,
   Settings,
   Task,
+  WeekEntry,
   defaultSettings,
   emptyDay,
+  emptyWeek,
 } from './types'
 
 const DAY_PREFIX = 'wj:day:'
+const WEEK_PREFIX = 'wj:week:'
 const PROJECTS_KEY = 'wj:projects'
 const SETTINGS_KEY = 'wj:settings'
 const META_KEY = 'wj:meta' // 各 key 最後修改時間（未來同步用）
@@ -97,6 +100,17 @@ export const loadSettings = (): Settings => ({
 
 export const saveSettings = (s: Settings) => write(SETTINGS_KEY, s)
 
+export const loadWeek = (mondayKey: string): WeekEntry => {
+  const stored = read<Partial<WeekEntry>>(WEEK_PREFIX + mondayKey)
+  return stored ? { ...emptyWeek(), ...stored } : emptyWeek()
+}
+
+export const saveWeek = (mondayKey: string, entry: WeekEntry) => write(WEEK_PREFIX + mondayKey, entry)
+
+/** 某週的 7 個日期 key（週一起算） */
+export const weekDates = (mondayKey: string): string[] =>
+  Array.from({ length: 7 }, (_, i) => addDays(mondayKey, i))
+
 /** 所有已記錄的日期 key，新到舊 */
 export const allDayKeys = (): string[] => {
   const keys: string[] = []
@@ -181,6 +195,56 @@ export const projectStats = (logs: ProjectDayLog[], todayKey: string): ProjectSt
     firstDate: logs.length > 0 ? logs[logs.length - 1].date : null,
     last7dSessions,
   }
+}
+
+// ---- 本週每專案統計（WeekView 用） ----
+
+export interface WeekProjectStat {
+  projectId: string
+  sessions: number
+  blockMinutes: number
+  learningCount: number
+}
+
+/** 掃某週 7 天，彙整每個專案的塗圈段數、時間軸分鐘、學習數 */
+export const weekProjectStats = (mondayKey: string): Map<string, WeekProjectStat> => {
+  const map = new Map<string, WeekProjectStat>()
+  const touch = (pid: string) => {
+    if (!map.has(pid)) map.set(pid, { projectId: pid, sessions: 0, blockMinutes: 0, learningCount: 0 })
+    return map.get(pid)!
+  }
+  for (const date of weekDates(mondayKey)) {
+    const d = loadDay(date)
+    for (const t of d.tasks) {
+      if (!t.text.trim() || !t.projectId) continue
+      touch(t.projectId).sessions += t.done
+    }
+    for (const b of d.blocks) {
+      if (b.taskIndex === null) continue
+      const t = d.tasks[b.taskIndex]
+      if (t?.projectId) touch(t.projectId).blockMinutes += b.end - b.start
+    }
+    for (const l of d.learnings) {
+      if (l.projectId) touch(l.projectId).learningCount++
+    }
+  }
+  return map
+}
+
+/** 某專案近 N 週每週塗圈段數（趨勢小圖用），舊到新 */
+export const projectTrend = (projectId: string, todayKey: string, weeks = 8): number[] => {
+  const thisMonday = mondayOf(todayKey)
+  const out: number[] = []
+  for (let w = weeks - 1; w >= 0; w--) {
+    const monday = addDays(thisMonday, -7 * w)
+    let sessions = 0
+    for (const date of weekDates(monday)) {
+      const d = loadDay(date)
+      for (const t of d.tasks) if (t.projectId === projectId) sessions += t.done
+    }
+    out.push(sessions)
+  }
+  return out
 }
 
 // ---- 匯出 / 匯入 ----
