@@ -46,6 +46,7 @@ export interface DayEntry {
 
 export interface Settings {
   focusMinutes: number
+  breakMinutes: number
   lastProjectId: string | null // 新任務預設掛上次選的專案
 }
 
@@ -68,5 +69,6 @@ export const emptyDay = (): DayEntry => ({
 
 export const defaultSettings = (): Settings => ({
   focusMinutes: 30,
+  breakMinutes: 5,
   lastProjectId: null,
 })

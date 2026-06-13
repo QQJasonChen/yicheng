@@ -2969,3 +2969,17 @@ button.mc-month:disabled { cursor: default; }
 .data-bar button:hover {
   color: var(--gold-deep);
 }
+
+/* ---- 時間塊套專案色（yicheng 差異化：時間軸一眼看到時間花在哪個專案） ---- */
+.tl-block.proj {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--proj) 16%, transparent),
+    color-mix(in srgb, var(--proj) 30%, transparent)
+  );
+  border-color: var(--proj);
+  border-left-color: var(--proj);
+}
+.tl-block .tl-block-proj {
+  margin-right: 4px;
+}

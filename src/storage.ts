@@ -110,7 +110,9 @@ export interface ProjectDayLog {
   date: string
   tasks: Task[]
   learnings: Learning[]
-  minutes: number
+  minutes: number // 顯示用：當天有用時間軸就用實際分鐘，否則用塗圈估算
+  blockMinutes: number // 時間軸實際分鐘（block → task → 該專案）
+  sessions: number // 塗圈段數
 }
 
 /** 某專案的累積日誌，新到舊。projectId 傳 null 可看「未掛專案」的雜事 */
@@ -120,9 +122,16 @@ export const projectLog = (projectId: string | null, focusMinutes: number): Proj
     const d = loadDay(date)
     const tasks = d.tasks.filter((t) => t.text.trim() && t.projectId === projectId)
     const learnings = d.learnings.filter((l) => l.projectId === projectId)
-    if (tasks.length === 0 && learnings.length === 0) continue
-    const minutes = tasks.reduce((sum, t) => sum + t.done * focusMinutes, 0)
-    logs.push({ date, tasks, learnings, minutes })
+    // 時間塊經 taskIndex 連回任務，解析該任務的專案
+    const blockMinutes = d.blocks.reduce((sum, b) => {
+      if (b.taskIndex === null) return sum
+      const t = d.tasks[b.taskIndex]
+      return t && t.projectId === projectId ? sum + (b.end - b.start) : sum
+    }, 0)
+    if (tasks.length === 0 && learnings.length === 0 && blockMinutes === 0) continue
+    const sessions = tasks.reduce((sum, t) => sum + t.done, 0)
+    const minutes = blockMinutes > 0 ? blockMinutes : sessions * focusMinutes
+    logs.push({ date, tasks, learnings, minutes, blockMinutes, sessions })
   }
   return logs
 }

@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import DayView from './DayView'
+import FocusTimer, { TimerState } from './FocusTimer'
 import ProjectDetail from './ProjectDetail'
 import ProjectsView from './ProjectsView'
 import {
@@ -21,6 +22,10 @@ export default function App() {
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [projects, setProjects] = useState<Project[]>(loadProjects)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [timer, setTimer] = useState<TimerState | null>(null)
+  const sessionSink = useRef<((taskIndex: number, startMs: number, endMs: number) => void) | null>(
+    null
+  )
 
   const updateSettings = (s: Settings) => {
     setSettings(s)
@@ -31,6 +36,28 @@ export default function App() {
     setProjects(ps)
     saveProjects(ps)
   }
+
+  const startFocus = (taskIndex: number, taskText: string) => {
+    setDateKey(todayKey) // 計時永遠記在今天
+    setTab('day')
+    const ms = settings.focusMinutes * 60_000
+    setTimer({
+      taskIndex,
+      taskText,
+      phase: 'focus',
+      totalMs: ms,
+      endsAt: Date.now() + ms,
+      pausedRemaining: null,
+      startedAt: Date.now(),
+    })
+  }
+
+  const registerSessionSink = useCallback(
+    (fn: (taskIndex: number, startMs: number, endMs: number) => void) => {
+      sessionSink.current = fn
+    },
+    []
+  )
 
   const selected = projects.find((p) => p.id === selectedId) ?? null
   const streak = currentStreak(todayKey)
@@ -71,6 +98,9 @@ export default function App() {
           projects={projects}
           settings={settings}
           onSettingsChange={updateSettings}
+          timer={timer}
+          onStartFocus={startFocus}
+          registerSessionSink={registerSessionSink}
         />
       )}
       {tab === 'projects' && !selected && (
@@ -95,6 +125,15 @@ export default function App() {
             setDateKey(k)
             setTab('day')
           }}
+        />
+      )}
+
+      {timer && (
+        <FocusTimer
+          timer={timer}
+          onUpdate={setTimer}
+          breakMinutes={settings.breakMinutes}
+          onSessionDone={(ti, s, e) => sessionSink.current?.(ti, s, e)}
         />
       )}
     </>

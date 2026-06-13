@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react'
 import ProjectPicker from './ProjectPicker'
 import { Project, Task } from './types'
 
@@ -6,9 +7,24 @@ interface Props {
   task: Task
   projects: Project[]
   onChange: (t: Task) => void
+  onStartFocus: () => void
+  isRunning: boolean
+  /** 把任務拖到時間軸：放開時回報座標，由 DayView 轉交 Timeline */
+  onDropToTimeline: (clientX: number, clientY: number) => void
 }
 
-export default function TaskRow({ index, task, projects, onChange }: Props) {
+export default function TaskRow({
+  index,
+  task,
+  projects,
+  onChange,
+  onStartFocus,
+  isRunning,
+  onDropToTimeline,
+}: Props) {
+  const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null)
+  const dragging = useRef(false)
+
   const setDone = (n: number) => {
     const done = Math.max(0, Math.min(8, n))
     onChange({ ...task, done, actual: done > 0 ? done : null })
@@ -20,6 +36,28 @@ export default function TaskRow({ index, task, projects, onChange }: Props) {
       completed: !task.completed,
       actual: !task.completed && task.done > 0 ? task.done : task.actual,
     })
+  }
+
+  // ---- 拖到時間軸（pointer 事件，桌機手機通用） ----
+  const onHandleDown = (e: React.PointerEvent) => {
+    if (!task.text.trim()) return
+    e.preventDefault()
+    try {
+      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    } catch {
+      /* 略過 */
+    }
+    dragging.current = true
+    setGhost({ x: e.clientX, y: e.clientY })
+  }
+  const onHandleMove = (e: React.PointerEvent) => {
+    if (dragging.current) setGhost({ x: e.clientX, y: e.clientY })
+  }
+  const onHandleUp = (e: React.PointerEvent) => {
+    if (!dragging.current) return
+    dragging.current = false
+    setGhost(null)
+    onDropToTimeline(e.clientX, e.clientY)
   }
 
   return (
@@ -38,6 +76,16 @@ export default function TaskRow({ index, task, projects, onChange }: Props) {
         value={task.projectId}
         onChange={(projectId) => onChange({ ...task, projectId })}
       />
+
+      <span
+        className="drag-handle"
+        title="點一下＝排進下一個空檔；拖到時間軸＝排在指定時間"
+        onPointerDown={onHandleDown}
+        onPointerMove={onHandleMove}
+        onPointerUp={onHandleUp}
+      >
+        ⠿
+      </span>
 
       {/* 稿紙方格：一格＝一段 30 分鐘。塗滿＝完成，超標變專案色，＋−調整預期 */}
       <div className="focus-track sq-track">
@@ -77,9 +125,24 @@ export default function TaskRow({ index, task, projects, onChange }: Props) {
         </span>
       </div>
 
+      <button
+        className={`task-play ${isRunning ? 'running' : ''}`}
+        onClick={onStartFocus}
+        title="開始 Focus Time"
+        disabled={!task.text.trim()}
+      >
+        {isRunning ? '◉' : '▶'}
+      </button>
+
       <button className={`task-check ${task.completed ? 'on' : ''}`} onClick={toggleDone} title="完成任務">
         ✓
       </button>
+
+      {ghost && (
+        <div className="task-ghost" style={{ left: ghost.x, top: ghost.y }}>
+          {task.text}
+        </div>
+      )}
     </div>
   )
 }
